@@ -1,6 +1,6 @@
 import GPT3Tokenizer from "@/utils/openai/gpt3-tokenizer/index";
 import { readFileSync } from "fs";
-import { PLAPI } from "paperlib-api/api";
+import { PLAPI, PLExtAPI } from "paperlib-api/api";
 import { PaperEntity } from "paperlib-api/model";
 import { urlUtils } from "paperlib-api/utils";
 
@@ -101,7 +101,7 @@ export class SummaryService {
         ],
       };
 
-      const response = (await PLAPI.networkTool.post(
+      const response = (await PLExtAPI.networkTool.post(
         url,
         content,
         {
@@ -110,9 +110,15 @@ export class SummaryService {
         0,
         300000,
         false,
-        // @ts-ignore
         true,
       )) as any;
+
+      if (
+        response.body instanceof String ||
+        typeof response.body === "string"
+      ) {
+        response.body = JSON.parse(response.body);
+      }
 
       const summary = (response.body as IGeminiResponse).candidates[0].content
         .parts[0].text;
@@ -156,7 +162,7 @@ export class SummaryService {
         ],
       };
 
-      const response = (await PLAPI.networkTool.post(
+      const response = (await PLExtAPI.networkTool.post(
         url,
         content,
         {
@@ -166,9 +172,15 @@ export class SummaryService {
         0,
         300000,
         false,
-        // @ts-ignore
         true,
       )) as any;
+
+      if (
+        response.body instanceof String ||
+        typeof response.body === "string"
+      ) {
+        response.body = JSON.parse(response.body);
+      }
 
       const summary = (response.body as IOpenAIResponse).choices[0].message
         .content;
