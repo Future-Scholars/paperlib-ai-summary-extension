@@ -6,6 +6,7 @@ import { urlUtils } from "paperlib-api/utils";
 
 import { IGeminiResponse, IOpenAIResponse } from "@/response";
 import pdfworker from "@/utils/pdfjs/worker";
+import path from "path";
 
 async function cmapProvider(name) {
   let buf = readFileSync(__dirname + "/cmaps/" + name + ".bcmap");
@@ -65,6 +66,7 @@ export class SummaryService {
     prompt: string = "Summary this paper in 3-4 sentences:\n\n",
     model: string = "gemini-pro",
     apiKey: string = "",
+    customAPIURL: string = "",
   ) {
     const fileURL = await PLAPI.fileService.access(paperEntity.mainURL, true);
 
@@ -72,9 +74,9 @@ export class SummaryService {
 
     let summary = "";
     if (model === "gemini-pro") {
-      summary = await this.requestGeminiPro(text, prompt, apiKey);
+      summary = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
     } else if (OPENAIModels.hasOwnProperty(model)) {
-      summary = await this.requestGPT(text, prompt, apiKey, model);
+      summary = await this.requestGPT(text, prompt, apiKey, model, customAPIURL);
     } else {
       PLAPI.logService.warn("Unknown model.", model, true, "AISummaryExt");
     }
@@ -86,9 +88,13 @@ export class SummaryService {
     return summary;
   }
 
-  private async requestGeminiPro(text: string, prompt: string, apiKey: string) {
+  private async requestGeminiPro(text: string, prompt: string, apiKey: string, customAPIURL: string) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+
+      const apiEndpoint = customAPIURL || "https://generativelanguage.googleapis.com/";
+      const url = new URL(`v1beta/models/gemini-pro:generateContent?key=${apiKey}`, apiEndpoint).href;
+
+      PLAPI.logService.info(url, "", true, "AISummaryExt")
       const content = {
         contents: [
           {
@@ -140,13 +146,17 @@ export class SummaryService {
     prompt: string,
     apiKey: string,
     model: string,
+    customAPIURL: string,
   ) {
     try {
       const max_tokens = OPENAIModels[model];
 
       let msg = this._limitTokens(this._minimize(prompt + text), max_tokens);
 
-      const url = `https://api.openai.com/v1/chat/completions`;
+      const apiEndpoint = customAPIURL || "https://api.openai.com/";
+      const url = new URL(`v1/chat/completions`, apiEndpoint).href;
+
+      PLAPI.logService.info(url, "", true, "AISummaryExt")
       const content = {
         model: model,
         messages: [

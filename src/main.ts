@@ -63,6 +63,13 @@ class PaperlibAISummaryExtension extends PLExtension {
           value: 5,
           order: 4,
         },
+        customAPIURL: {
+          type: "string",
+          name: "Custom API URL",
+          description: "The proxied API URL.",
+          value: "",
+          order: 5,
+        },
       },
     });
 
@@ -143,6 +150,12 @@ class PaperlibAISummaryExtension extends PLExtension {
         "ai-model",
       )) as string;
       let apiKey = "";
+      const customAPIURL = (
+        await PLExtAPI.extensionPreferenceService.get(
+          this.id,
+          "customAPIURL",
+        ) as string
+      )
       if (model === "gemini-pro") {
         apiKey = (await PLExtAPI.extensionPreferenceService.get(
           this.id,
@@ -171,6 +184,7 @@ class PaperlibAISummaryExtension extends PLExtension {
         prompt,
         model,
         apiKey,
+        customAPIURL,
       );
 
       if (summary) {
