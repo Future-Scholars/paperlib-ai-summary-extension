@@ -94,7 +94,7 @@ export class SummaryService {
       const apiEndpoint = customAPIURL || "https://generativelanguage.googleapis.com/";
       const url = new URL(`v1beta/models/gemini-pro:generateContent?key=${apiKey}`, apiEndpoint).href;
 
-      PLAPI.logService.info(url, "", true, "AISummaryExt")
+      PLAPI.logService.info(url, "", false, "AISummaryExt")
       const content = {
         contents: [
           {
@@ -156,7 +156,7 @@ export class SummaryService {
       const apiEndpoint = customAPIURL || "https://api.openai.com/";
       const url = new URL(`v1/chat/completions`, apiEndpoint).href;
 
-      PLAPI.logService.info(url, "", true, "AISummaryExt")
+      PLAPI.logService.info(url, "", false, "AISummaryExt")
       const content = {
         model: model,
         messages: [
