@@ -35,7 +35,7 @@ export const OPENAIModels = {
   "gpt-4-1106-preview": 128000,
 };
 
-export class SummaryService {
+export class AIService {
   async getPDFText(fileURL: string, pageNum: number = 5) {
     try {
       const buf = readFileSync(urlUtils.eraseProtocol(fileURL));
@@ -86,6 +86,34 @@ export class SummaryService {
     }
 
     return summary;
+  }
+
+  async aitag(
+    paperEntity: PaperEntity,
+    prompt: string = "Tag this paper.",
+    model: string = "gemini-pro",
+    apiKey: string = "",
+    customAPIURL: string = "",
+  ) {
+    const fileURL = await PLAPI.fileService.access(paperEntity.mainURL, true);
+
+    const text = await this.getPDFText(fileURL, 1);
+    // const text = ""
+
+    let suggestedTagStr = "";
+    if (model === "gemini-pro") {
+      suggestedTagStr = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
+    } else if (OPENAIModels.hasOwnProperty(model)) {
+      suggestedTagStr = await this.requestGPT(text, prompt, apiKey, model, customAPIURL);
+    } else {
+      PLAPI.logService.warn("Unknown model.", model, true, "AISummaryExt");
+    }
+
+    if (suggestedTagStr === "") {
+      PLAPI.logService.warn("Suggested tags is empty.", "", true, "AISummaryExt");
+    }
+
+    return suggestedTagStr;
   }
 
   private async requestGeminiPro(text: string, prompt: string, apiKey: string, customAPIURL: string) {
@@ -163,7 +191,7 @@ export class SummaryService {
           {
             role: "system",
             content:
-              "You are a academic paper explainer, skilled in explaining content of a paper.",
+              "You are a academic paper explainer, skilled in explaining content of a paper and tag a paper.",
           },
           {
             role: "user",

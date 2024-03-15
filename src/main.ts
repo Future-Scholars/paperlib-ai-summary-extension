@@ -1,12 +1,12 @@
 import { PLAPI, PLExtAPI, PLExtension } from "paperlib-api/api";
 import { PaperEntity } from "paperlib-api/model";
 
-import { OPENAIModels, SummaryService } from "@/services/summary-service";
+import { AIService, OPENAIModels } from "@/services/ai-service";
 
 class PaperlibAISummaryExtension extends PLExtension {
   disposeCallbacks: (() => void)[];
 
-  private readonly _summaryService: SummaryService;
+  private readonly _aiService: AIService;
 
   constructor() {
     super({
@@ -74,7 +74,7 @@ class PaperlibAISummaryExtension extends PLExtension {
     });
 
     this.disposeCallbacks = [];
-    this._summaryService = new SummaryService();
+    this._aiService = new AIService();
   }
 
   async initialize() {
@@ -83,6 +83,8 @@ class PaperlibAISummaryExtension extends PLExtension {
       this.defaultPreference,
     );
 
+    // ============
+    // Summary Command
     this.disposeCallbacks.push(
       PLAPI.commandService.on(
         "@future-scholars/symmarize_selected_paper" as any,
@@ -98,11 +100,38 @@ class PaperlibAISummaryExtension extends PLExtension {
       ),
     );
 
+    // ============
+    // Summary Command
     this.disposeCallbacks.push(
       PLAPI.commandService.registerExternel({
-        id: "summarize",
+        id: `summarize`,
         description: "Summarize the current selected paper.",
         event: "@future-scholars/symmarize_selected_paper",
+      }),
+    );
+
+    // ============
+    // AITag Command
+    this.disposeCallbacks.push(
+      PLAPI.commandService.on(
+        "@future-scholars/aitag_selected_paper" as any,
+        (value) => {
+          PLAPI.logService.info(
+            "AITag the selected paper.",
+            "",
+            false,
+            "AISummaryExt",
+          );
+          this.aitag();
+        },
+      ),
+    );
+
+    this.disposeCallbacks.push(
+      PLAPI.commandService.registerExternel({
+        id: `tagit`,
+        description: "Use AI to tag the selected papers.",
+        event: "@future-scholars/aitag_selected_paper",
       }),
     );
   }
@@ -150,12 +179,10 @@ class PaperlibAISummaryExtension extends PLExtension {
         "ai-model",
       )) as string;
       let apiKey = "";
-      const customAPIURL = (
-        await PLExtAPI.extensionPreferenceService.get(
-          this.id,
-          "customAPIURL",
-        ) as string
-      )
+      const customAPIURL = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "customAPIURL",
+      )) as string;
       if (model === "gemini-pro") {
         apiKey = (await PLExtAPI.extensionPreferenceService.get(
           this.id,
@@ -178,7 +205,7 @@ class PaperlibAISummaryExtension extends PLExtension {
         prompt = "Output please use markdown style.\n" + prompt;
       }
 
-      let summary = await this._summaryService.summarize(
+      let summary = await this._aiService.summarize(
         paperEntity,
         pageNum,
         prompt,
@@ -215,6 +242,124 @@ class PaperlibAISummaryExtension extends PLExtension {
     } catch (error) {
       PLAPI.logService.error(
         "Failed to summarize the selected paper.",
+        error as Error,
+        false,
+        "AISummaryExt",
+      );
+    } finally {
+      await PLAPI.uiStateService.setState({
+        "processingState.general":
+          parseInt(
+            (await PLAPI.uiStateService.getState(
+              "processingState.general",
+            )) as string,
+          ) - 1,
+      });
+    }
+  }
+
+  async aitag() {
+    // Show spinner.
+    await PLAPI.uiStateService.setState({
+      "processingState.general":
+        parseInt(
+          (await PLAPI.uiStateService.getState(
+            "processingState.general",
+          )) as string,
+        ) + 1,
+    });
+
+    try {
+      const selectedPaperEntities = (await PLAPI.uiStateService.getState(
+        "selectedPaperEntities",
+      )) as PaperEntity[];
+
+      if (selectedPaperEntities.length === 0) {
+        return;
+      }
+
+      const tags = await PLAPI.categorizerService.load(
+        "PaperTag" as any,
+        "count",
+        "desc",
+      );
+      const tagList = `[${tags.filter(v => (v.name !== 'Tags')).map((tag) => tag.name).join(", ")}]`;
+
+      for (const paperEntity of selectedPaperEntities) {
+
+        if (paperEntity.tags.length !== 0) {
+          PLAPI.logService.warn(
+            "The paper already has tags.",
+            paperEntity.title,
+            true,
+            "AISummaryExt",
+          );
+          continue;
+        }
+
+        let prompt = (await PLExtAPI.extensionPreferenceService.get(
+          this.id,
+          "prompt",
+        )) as string;
+        const model = (await PLExtAPI.extensionPreferenceService.get(
+          this.id,
+          "ai-model",
+        )) as string;
+        let apiKey = "";
+        const customAPIURL = (await PLExtAPI.extensionPreferenceService.get(
+          this.id,
+          "customAPIURL",
+        )) as string;
+        if (model === "gemini-pro") {
+          apiKey = (await PLExtAPI.extensionPreferenceService.get(
+            this.id,
+            "gemini-api-key",
+          )) as string;
+        } else if (OPENAIModels.hasOwnProperty(model)) {
+          apiKey = (await PLExtAPI.extensionPreferenceService.get(
+            this.id,
+            "openai-api-key",
+          )) as string;
+        }
+        
+        prompt = `Please help me to choose some related tags for the paper titled ${paperEntity.title} from this tag list: ${tagList}. Please don't create new tags. If noone is related, just return an empty array. Better less than more. Please just give me a JSON strigified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). The first page content can be used as a reference: ".`;
+
+        let suggestedTagStr = await this._aiService.aitag(
+          paperEntity,
+          prompt,
+          model,
+          apiKey,
+          customAPIURL,
+        );
+        if (suggestedTagStr) {
+          try {
+            const jsonStr = suggestedTagStr.match(/\{.*\}/gm)![0];
+
+            const { suggested } = JSON.parse(jsonStr);
+            const suggestedTags = tags.filter((tag) => suggested.includes(tag.name));
+            paperEntity.tags.push(...suggestedTags);
+
+            await PLAPI.paperService.update([paperEntity]);
+          } catch (error) {
+            PLAPI.logService.error(
+              "Failed to parse the suggested tags.",
+              suggestedTagStr,
+              true,
+              "AISummaryExt",
+            );
+            PLAPI.logService.error(
+              "Failed to tag the selected paper.",
+              error as Error,
+              false,
+              "AISummaryExt",
+            )
+          }
+          
+        }
+      }
+    } catch (error) {
+      PLAPI.logService.error(
+        "Failed to tag the selected paper.",
         error as Error,
         false,
         "AISummaryExt",
