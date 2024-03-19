@@ -6,7 +6,6 @@ import { urlUtils } from "paperlib-api/utils";
 
 import { IGeminiResponse, IOpenAIResponse } from "@/response";
 import pdfworker from "@/utils/pdfjs/worker";
-import path from "path";
 
 async function cmapProvider(name) {
   let buf = readFileSync(__dirname + "/cmaps/" + name + ".bcmap");
@@ -84,10 +83,22 @@ export class AIService {
     if (model === "gemini-pro") {
       summary = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
     } else if (OPENAIModels.hasOwnProperty(model)) {
-      summary = await this.requestGPT(text, prompt, apiKey, model, customAPIURL);
+      summary = await this.requestGPT(
+        text,
+        prompt,
+        apiKey,
+        model,
+        customAPIURL,
+      );
     } else if (PerplexityModels.hasOwnProperty(model)) {
-      summary = await this.requestPerplexity(text, prompt, apiKey, model, customAPIURL);
-    }else {
+      summary = await this.requestPerplexity(
+        text,
+        prompt,
+        apiKey,
+        model,
+        customAPIURL,
+      );
+    } else {
       PLAPI.logService.warn("Unknown model.", model, true, "AISummaryExt");
     }
 
@@ -112,31 +123,59 @@ export class AIService {
 
     let suggestedTagStr = "";
     if (model === "gemini-pro") {
-      suggestedTagStr = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
+      suggestedTagStr = await this.requestGeminiPro(
+        text,
+        prompt,
+        apiKey,
+        customAPIURL,
+      );
     } else if (OPENAIModels.hasOwnProperty(model)) {
-      suggestedTagStr = await this.requestGPT(text, prompt, apiKey, model, customAPIURL);
-      
-    }else if (PerplexityModels.hasOwnProperty(model)) {
-      suggestedTagStr = await this.requestPerplexity(text, prompt, apiKey, model, customAPIURL);
-      
+      suggestedTagStr = await this.requestGPT(
+        text,
+        prompt,
+        apiKey,
+        model,
+        customAPIURL,
+      );
+    } else if (PerplexityModels.hasOwnProperty(model)) {
+      suggestedTagStr = await this.requestPerplexity(
+        text,
+        prompt,
+        apiKey,
+        model,
+        customAPIURL,
+      );
     } else {
       PLAPI.logService.warn("Unknown model.", model, true, "AISummaryExt");
     }
 
     if (suggestedTagStr === "") {
-      PLAPI.logService.warn("Suggested tags is empty.", "", true, "AISummaryExt");
+      PLAPI.logService.warn(
+        "Suggested tags is empty.",
+        "",
+        true,
+        "AISummaryExt",
+      );
     }
 
     return suggestedTagStr;
   }
 
-  private async requestGeminiPro(text: string, prompt: string, apiKey: string, customAPIURL: string) {
+  private async requestGeminiPro(
+    text: string,
+    prompt: string,
+    apiKey: string,
+    customAPIURL: string,
+  ) {
     try {
+      const apiEndpoint =
+        customAPIURL || "https://generativelanguage.googleapis.com/";
+      const url = new URL(
+        `v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+        apiEndpoint,
+      ).href;
 
-      const apiEndpoint = customAPIURL || "https://generativelanguage.googleapis.com/";
-      const url = new URL(`v1beta/models/gemini-pro:generateContent?key=${apiKey}`, apiEndpoint).href;
-
-      PLAPI.logService.info(url, "", false, "AISummaryExt")
+      PLAPI.logService.info(url, "", false, "AISummaryExt");
       const content = {
         contents: [
           {
@@ -198,7 +237,7 @@ export class AIService {
       const apiEndpoint = customAPIURL || "https://api.openai.com/";
       const url = new URL(`v1/chat/completions`, apiEndpoint).href;
 
-      PLAPI.logService.info(url, "", false, "AISummaryExt")
+      PLAPI.logService.info(url, "", false, "AISummaryExt");
       const content = {
         model: model,
         messages: [
@@ -264,7 +303,7 @@ export class AIService {
       const apiEndpoint = customAPIURL || "https://api.perplexity.ai/";
       const url = new URL(`chat/completions`, apiEndpoint).href;
 
-      PLAPI.logService.info(url, "", true, "AISummaryExt")
+      PLAPI.logService.info(url, "", true, "AISummaryExt");
       const content = {
         model: model,
         messages: [

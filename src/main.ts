@@ -1,7 +1,11 @@
 import { PLAPI, PLExtAPI, PLExtension } from "paperlib-api/api";
 import { PaperEntity } from "paperlib-api/model";
 
-import { AIService, OPENAIModels, PerplexityModels } from "@/services/ai-service";
+import {
+  AIService,
+  OPENAIModels,
+  PerplexityModels,
+} from "@/services/ai-service";
 
 class PaperlibAISummaryExtension extends PLExtension {
   disposeCallbacks: (() => void)[];
@@ -35,7 +39,7 @@ class PaperlibAISummaryExtension extends PLExtension {
             "mistral-7b-instruct": "Perplexity mistral-7b",
             "mixtral-8x7b-instruct": "Perplexity mistral-8x7b",
             "sonar-small-chat": "Perplexity sonar-small-chat",
-            "sonar-medium-chat": "Perplexity sonar-medium-chat"
+            "sonar-medium-chat": "Perplexity sonar-medium-chat",
           },
           value: "gemini-pro",
           order: 1,
@@ -205,7 +209,7 @@ class PaperlibAISummaryExtension extends PLExtension {
           this.id,
           "openai-api-key",
         )) as string;
-      }else if (PerplexityModels.hasOwnProperty(model)){
+      } else if (PerplexityModels.hasOwnProperty(model)) {
         apiKey = (await PLExtAPI.extensionPreferenceService.get(
           this.id,
           "perplexity-api-key",
@@ -299,10 +303,12 @@ class PaperlibAISummaryExtension extends PLExtension {
         "count",
         "desc",
       );
-      const tagList = `[${tags.filter(v => (v.name !== 'Tags')).map((tag) => tag.name).join(", ")}]`;
+      const tagList = `[${tags
+        .filter((v) => v.name !== "Tags")
+        .map((tag) => tag.name)
+        .join(", ")}]`;
 
       for (const paperEntity of selectedPaperEntities) {
-
         if (paperEntity.tags.length !== 0) {
           PLAPI.logService.warn(
             "The paper already has tags.",
@@ -336,13 +342,13 @@ class PaperlibAISummaryExtension extends PLExtension {
             this.id,
             "openai-api-key",
           )) as string;
-        }else if (PerplexityModels.hasOwnProperty(model)){
+        } else if (PerplexityModels.hasOwnProperty(model)) {
           apiKey = (await PLExtAPI.extensionPreferenceService.get(
             this.id,
             "perplexity-api-key",
-          )) as string
+          )) as string;
         }
-        
+
         prompt = `Please help me to choose some related tags for the paper titled ${paperEntity.title} from this tag list: ${tagList}. Please don't create new tags. If none is related, just return an empty array. Better less than more. Please just give me a JSON stringified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). The first page content can be used as a reference: ".`;
 
         let suggestedTagStr = await this._aiService.aitag(
@@ -357,7 +363,9 @@ class PaperlibAISummaryExtension extends PLExtension {
             const jsonStr = suggestedTagStr.match(/\{.*\}/gm)![0];
 
             const { suggested } = JSON.parse(jsonStr);
-            const suggestedTags = tags.filter((tag) => suggested.includes(tag.name));
+            const suggestedTags = tags.filter((tag) =>
+              suggested.includes(tag.name),
+            );
             paperEntity.tags.push(...suggestedTags);
 
             await PLAPI.paperService.update([paperEntity]);
@@ -373,9 +381,8 @@ class PaperlibAISummaryExtension extends PLExtension {
               error as Error,
               false,
               "AISummaryExt",
-            )
+            );
           }
-          
         }
       }
     } catch (error) {
