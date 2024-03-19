@@ -35,6 +35,14 @@ export const OPENAIModels = {
   "gpt-4-1106-preview": 128000,
 };
 
+export const PerplexityModels = {
+  "codellama-70b-instruct": 16384,
+  "mistral-7b-instruct": 16385,
+  "mixtral-8x7b-instruct": 16385,
+  "sonar-small-chat": 16385,
+  "sonar-medium-chat": 16385,
+};
+
 export class AIService {
   async getPDFText(fileURL: string, pageNum: number = 5) {
     try {
@@ -77,7 +85,9 @@ export class AIService {
       summary = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
     } else if (OPENAIModels.hasOwnProperty(model)) {
       summary = await this.requestGPT(text, prompt, apiKey, model, customAPIURL);
-    } else {
+    } else if (PerplexityModels.hasOwnProperty(model)) {
+      summary = await this.requestPerplexity(text, prompt, apiKey, model, customAPIURL);
+    }else {
       PLAPI.logService.warn("Unknown model.", model, true, "AISummaryExt");
     }
 
@@ -105,6 +115,10 @@ export class AIService {
       suggestedTagStr = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
     } else if (OPENAIModels.hasOwnProperty(model)) {
       suggestedTagStr = await this.requestGPT(text, prompt, apiKey, model, customAPIURL);
+      
+    }else if (PerplexityModels.hasOwnProperty(model)) {
+      suggestedTagStr = await this.requestPerplexity(text, prompt, apiKey, model, customAPIURL);
+      
     } else {
       PLAPI.logService.warn("Unknown model.", model, true, "AISummaryExt");
     }
@@ -227,6 +241,72 @@ export class AIService {
     } catch (e) {
       PLAPI.logService.error(
         "Failed to request OPENAI GPT.",
+        e as Error,
+        true,
+        "AISummaryExt",
+      );
+      return "";
+    }
+  }
+
+  private async requestPerplexity(
+    text: string,
+    prompt: string,
+    apiKey: string,
+    model: string,
+    customAPIURL: string,
+  ) {
+    try {
+      const max_tokens = PerplexityModels[model];
+
+      let msg = this._limitTokens(this._minimize(prompt + text), max_tokens);
+
+      const apiEndpoint = customAPIURL || "https://api.perplexity.ai/";
+      const url = new URL(`chat/completions`, apiEndpoint).href;
+
+      PLAPI.logService.info(url, "", true, "AISummaryExt")
+      const content = {
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a academic paper explainer, skilled in explaining content of a paper and tag a paper.",
+          },
+          {
+            role: "user",
+            content: msg,
+          },
+        ],
+      };
+
+      const response = (await PLExtAPI.networkTool.post(
+        url,
+        content,
+        {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        0,
+        300000,
+        false,
+        true,
+      )) as any;
+
+      if (
+        response.body instanceof String ||
+        typeof response.body === "string"
+      ) {
+        response.body = JSON.parse(response.body);
+      }
+
+      const summary = (response.body as IOpenAIResponse).choices[0].message
+        .content;
+
+      return summary;
+    } catch (e) {
+      PLAPI.logService.error(
+        "Failed to request Perplexity.",
         e as Error,
         true,
         "AISummaryExt",
