@@ -1,4 +1,4 @@
-import { PLAPI, PLExtAPI, PLExtension } from "paperlib-api/api";
+import { PLAPI, PLExtAPI, PLExtension, PLMainAPI } from "paperlib-api/api";
 import { PaperEntity } from "paperlib-api/model";
 
 import {
@@ -105,19 +105,11 @@ class PaperlibAISummaryExtension extends PLExtension {
       PLAPI.commandService.on(
         "@future-scholars/symmarize_selected_paper" as any,
         (value) => {
-          PLAPI.logService.info(
-            "Summarize the selected paper.",
-            "",
-            false,
-            "AISummaryExt",
-          );
           this.summarize();
         },
       ),
     );
 
-    // ============
-    // Summary Command
     this.disposeCallbacks.push(
       PLAPI.commandService.registerExternel({
         id: `summarize`,
@@ -126,18 +118,24 @@ class PaperlibAISummaryExtension extends PLExtension {
       }),
     );
 
+    this.disposeCallbacks.push(
+      PLMainAPI.contextMenuService.on(
+        "dataContextMenuFromExtensionsClicked",
+        (value) => {
+          const {extID, itemID} = value.value
+          if (extID === this.id && itemID === "summarize") {
+            this.summarize();
+          }
+        },
+      ),
+    );
+
     // ============
     // AITag Command
     this.disposeCallbacks.push(
       PLAPI.commandService.on(
         "@future-scholars/aitag_selected_paper" as any,
         (value) => {
-          PLAPI.logService.info(
-            "AITag the selected paper.",
-            "",
-            false,
-            "AISummaryExt",
-          );
           this.aitag();
         },
       ),
@@ -150,15 +148,50 @@ class PaperlibAISummaryExtension extends PLExtension {
         event: "@future-scholars/aitag_selected_paper",
       }),
     );
+
+    this.disposeCallbacks.push(
+      PLMainAPI.contextMenuService.on(
+        "dataContextMenuFromExtensionsClicked",
+        (value) => {
+          const {extID, itemID} = value.value
+
+          if (extID === this.id && itemID === "tagit") {
+            this.aitag();
+          }
+        },
+      ),
+    );
+
+    // ============
+    // Context Menu
+
+    PLMainAPI.contextMenuService.registerContextMenu(this.id, [
+      {
+        id: "summarize",
+        label: "AISummaryExt - summarize",
+      },
+      {
+        id: "tagit",
+        label: "AISummaryExt - tag it",
+      },
+    ]);
   }
 
   async dispose() {
     PLExtAPI.extensionPreferenceService.unregister(this.id);
+    PLMainAPI.contextMenuService.unregisterContextMenu(this.id);
 
     this.disposeCallbacks.forEach((callback) => callback());
   }
 
   async summarize() {
+    PLAPI.logService.info(
+      "Summarize the selected paper.",
+      "",
+      false,
+      "AISummaryExt",
+    );
+
     // Show spinner.
     await PLAPI.uiStateService.setState({
       "processingState.general":
@@ -279,6 +312,13 @@ class PaperlibAISummaryExtension extends PLExtension {
   }
 
   async aitag() {
+    PLAPI.logService.info(
+      "AITag the selected paper.",
+      "",
+      false,
+      "AISummaryExt",
+    );
+
     // Show spinner.
     await PLAPI.uiStateService.setState({
       "processingState.general":
