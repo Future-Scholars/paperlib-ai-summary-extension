@@ -290,7 +290,7 @@ class PaperlibAISummaryExtension extends PLExtension {
           }
         }
         paperEntity.note = paperEntity.note + summary;
-        await PLAPI.paperService.update([paperEntity]);
+        await PLAPI.paperService.update([paperEntity], false, true);
       }
     } catch (error) {
       PLAPI.logService.error(
@@ -408,7 +408,7 @@ class PaperlibAISummaryExtension extends PLExtension {
             );
             paperEntity.tags.push(...suggestedTags);
 
-            await PLAPI.paperService.update([paperEntity]);
+            await PLAPI.paperService.update([paperEntity], false, true);
           } catch (error) {
             PLAPI.logService.error(
               "Failed to parse the suggested tags.",
