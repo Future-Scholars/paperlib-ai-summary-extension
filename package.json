@@ -1,11 +1,11 @@
 {
   "name": "@future-scholars/paperlib-ai-summary-extension",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "author": "Paperlib",
   "description": "An AI-powered extension to summarize papers.",
   "main": "dist/main.js",
   "type": "commonjs",
-  "manifest_version": "0.0.16",
+  "manifest_version": "0.1.8",
   "homepage": "https://github.com/Future-Scholars/paperlib-ai-summary-extension",
   "scripts": {
     "prebuild": "tsc --noEmit",

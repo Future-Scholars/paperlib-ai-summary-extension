@@ -28,7 +28,8 @@ class PaperlibAISummaryExtension extends PLExtension {
           name: "LLM Model",
           description: "The LLM model to use.",
           options: {
-            "gemini-pro": "Gemini Pro",
+            "gemini-pro": "Gemini Pro 1.0",
+            "gemini-1.5-pro-latest": "Gemini Pro 1.5",
             "gpt-3.5-turbo": "GPT-3.5 Turbo",
             "gpt-3.5-turbo-16k": "GPT-3.5 Turbo 16K",
             "gpt-3.5-turbo-1106": "GPT-3.5 Turbo 1106",
