@@ -36,6 +36,8 @@ class PaperlibAISummaryExtension extends PLExtension {
             "gpt-4": "GPT-4",
             "gpt-4-32k": "GPT-4 32K",
             "gpt-4-1106-preview": "GPT-4 1106 Preview",
+            "gpt-4-turbo": "GPT-4 Turbo",
+            "gpt-4o": "GPT-4o",
             "codellama-70b-instruct": "Perplexity codellama-70b",
             "mistral-7b-instruct": "Perplexity mistral-7b",
             "mixtral-8x7b-instruct": "Perplexity mistral-8x7b",
