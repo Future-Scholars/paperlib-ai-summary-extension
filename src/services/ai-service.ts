@@ -44,6 +44,12 @@ export const PerplexityModels = {
   "sonar-medium-chat": 16385,
 };
 
+export const GEMINIModels = {
+  "gemini-1.0-pro": 30720,
+  "gemini-1.5-pro-latest": 1048576,
+  "gemini-1.5-flash-latest": 1048576,
+}
+
 export class AIService {
   async getPDFText(fileURL: string, pageNum: number = 5) {
     try {
@@ -73,7 +79,7 @@ export class AIService {
     paperEntity: PaperEntity,
     pageNum: number = 5,
     prompt: string = "Summary this paper in 3-4 sentences:\n\n",
-    model: string = "gemini-pro",
+    model: string = "gemini-1.0-pro",
     apiKey: string = "",
     customAPIURL: string = "",
   ) {
@@ -82,7 +88,7 @@ export class AIService {
     const text = await this.getPDFText(fileURL, pageNum);
 
     let summary = "";
-    if (model === "gemini-pro") {
+    if (GEMINIModels.hasOwnProperty(model)) {
       summary = await this.requestGeminiPro(text, prompt, apiKey, customAPIURL);
     } else if (OPENAIModels.hasOwnProperty(model)) {
       summary = await this.requestGPT(
@@ -124,7 +130,7 @@ export class AIService {
     // const text = ""
 
     let suggestedTagStr = "";
-    if (model === "gemini-pro") {
+    if (GEMINIModels.hasOwnProperty(model)) {
       suggestedTagStr = await this.requestGeminiPro(
         text,
         prompt,
@@ -176,6 +182,8 @@ export class AIService {
         `v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
         apiEndpoint,
       ).href;
+
+      console.log(url, apiKey)
 
       PLAPI.logService.info(url, "", false, "AISummaryExt");
       const content = {
