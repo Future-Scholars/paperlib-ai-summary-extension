@@ -183,8 +183,6 @@ export class AIService {
         apiEndpoint,
       ).href;
 
-      console.log(url, apiKey)
-
       PLAPI.logService.info(url, "", false, "AISummaryExt");
       const content = {
         contents: [
