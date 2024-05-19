@@ -377,7 +377,7 @@ class PaperlibAISummaryExtension extends PLExtension {
           this.id,
           "customAPIURL",
         )) as string;
-        if (model === "gemini-pro") {
+        if (GEMINIModels.hasOwnProperty(model)) {
           apiKey = (await PLExtAPI.extensionPreferenceService.get(
             this.id,
             "gemini-api-key",
@@ -393,6 +393,8 @@ class PaperlibAISummaryExtension extends PLExtension {
             "perplexity-api-key",
           )) as string;
         }
+
+
 
         prompt = `Please help me to choose some related tags for the paper titled ${paperEntity.title} from this tag list: ${tagList}. Please don't create new tags. If none is related, just return an empty array. Better less than more. Please just give me a JSON stringified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). The first page content can be used as a reference: ".`;
 

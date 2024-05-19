@@ -124,6 +124,8 @@ export class AIService {
     apiKey: string = "",
     customAPIURL: string = "",
   ) {
+    console.log("aitag", paperEntity, prompt, model, apiKey, customAPIURL);
+
     const fileURL = await PLAPI.fileService.access(paperEntity.mainURL, true);
 
     const text = await this.getPDFText(fileURL, 1);
