@@ -1,17 +1,15 @@
 import { PLAPI, PLExtAPI, PLExtension, PLMainAPI } from "paperlib-api/api";
 import { PaperEntity } from "paperlib-api/model";
+import { LLMsAPI } from "@future-scholars/llms-api-service";
 
 import {
-  AIService,
-  GEMINIModels,
-  OPENAIModels,
-  PerplexityModels,
-} from "@/services/ai-service";
+  AISummaryExtService,
+} from "@/services/service";
 
 class PaperlibAISummaryExtension extends PLExtension {
   disposeCallbacks: (() => void)[];
 
-  private readonly _aiService: AIService;
+  private readonly _service: AISummaryExtService;
 
   constructor() {
     super({
@@ -95,7 +93,7 @@ class PaperlibAISummaryExtension extends PLExtension {
     });
 
     this.disposeCallbacks = [];
-    this._aiService = new AIService();
+    this._service = new AISummaryExtService();
   }
 
   async initialize() {
@@ -118,7 +116,7 @@ class PaperlibAISummaryExtension extends PLExtension {
     this.disposeCallbacks.push(
       PLAPI.commandService.registerExternel({
         id: `summarize`,
-        description: "Summarize the current selected paper.",
+        description: "Summarize the current selected paper with LLMs.",
         event: "@future-scholars/symmarize_selected_paper",
       }),
     );
@@ -127,7 +125,7 @@ class PaperlibAISummaryExtension extends PLExtension {
       PLMainAPI.contextMenuService.on(
         "dataContextMenuFromExtensionsClicked",
         (value) => {
-          const {extID, itemID} = value.value
+          const { extID, itemID } = value.value
           if (extID === this.id && itemID === "summarize") {
             this.summarize();
           }
@@ -141,7 +139,7 @@ class PaperlibAISummaryExtension extends PLExtension {
       PLAPI.commandService.on(
         "@future-scholars/aitag_selected_paper" as any,
         (value) => {
-          this.aitag();
+          this.tag();
         },
       ),
     );
@@ -149,7 +147,7 @@ class PaperlibAISummaryExtension extends PLExtension {
     this.disposeCallbacks.push(
       PLAPI.commandService.registerExternel({
         id: `tagit`,
-        description: "Use AI to tag the selected papers.",
+        description: "Use LLMs to tag the selected papers.",
         event: "@future-scholars/aitag_selected_paper",
       }),
     );
@@ -158,13 +156,32 @@ class PaperlibAISummaryExtension extends PLExtension {
       PLMainAPI.contextMenuService.on(
         "dataContextMenuFromExtensionsClicked",
         (value) => {
-          const {extID, itemID} = value.value
+          const { extID, itemID } = value.value
 
           if (extID === this.id && itemID === "tagit") {
-            this.aitag();
+            this.tag();
           }
         },
       ),
+    );
+
+    // =================
+    // Filter Command
+    this.disposeCallbacks.push(
+      PLAPI.commandService.on(
+        "@future-scholars/filter_library" as any,
+        (value) => {
+          this.filter(value.value);
+        },
+      ),
+    );
+
+    this.disposeCallbacks.push(
+      PLAPI.commandService.registerExternel({
+        id: `semanfilter`,
+        description: "Semantically filter the library with natural language powered by LLMs.",
+        event: "@future-scholars/filter_library",
+      }),
     );
 
     // ============
@@ -187,6 +204,29 @@ class PaperlibAISummaryExtension extends PLExtension {
     PLMainAPI.contextMenuService.unregisterContextMenu(this.id);
 
     this.disposeCallbacks.forEach((callback) => callback());
+  }
+
+  async getAPIKey(model: string) {
+    let apiKey = "";
+    const modelServiceProvider = LLMsAPI.modelServiceProvider(model);
+    if (modelServiceProvider === "Gemini") {
+      apiKey = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "gemini-api-key",
+      )) as string;
+    } else if (modelServiceProvider === "OpenAI") {
+      apiKey = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "openai-api-key",
+      )) as string;
+    } else if (modelServiceProvider === "Perplexity") {
+      apiKey = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "perplexity-api-key",
+      )) as string;
+    }
+
+    return apiKey;
   }
 
   async summarize() {
@@ -224,53 +264,44 @@ class PaperlibAISummaryExtension extends PLExtension {
           "pageNum",
         )) as string,
       );
+
       let prompt = (await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "prompt",
       )) as string;
+      prompt = prompt || "Summary this paper in 3-4 sentences:\n\n";
+
       const model = (await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "ai-model",
       )) as string;
-      let apiKey = "";
+
       const customAPIURL = (await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "customAPIURL",
       )) as string;
-      if (GEMINIModels.hasOwnProperty(model)) {
-        apiKey = (await PLExtAPI.extensionPreferenceService.get(
-          this.id,
-          "gemini-api-key",
-        )) as string;
-      } else if (OPENAIModels.hasOwnProperty(model)) {
-        apiKey = (await PLExtAPI.extensionPreferenceService.get(
-          this.id,
-          "openai-api-key",
-        )) as string;
-      } else if (PerplexityModels.hasOwnProperty(model)) {
-        apiKey = (await PLExtAPI.extensionPreferenceService.get(
-          this.id,
-          "perplexity-api-key",
-        )) as string;
-      }
+
+      const apiKey = await this.getAPIKey(model);
 
       const useMarkdown = await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "markdown",
       );
-
-      prompt = prompt || "Summary this paper in 3-4 sentences:\n\n";
+      let systemInstruction = "You are an AI assistant for summarizing academic publications.\n";
       if (useMarkdown) {
-        prompt = "Output please use markdown style.\n" + prompt;
+        systemInstruction = "Don't start with a title etc. Please format the output in markdown style.\n";
       }
-      let summary = await this._aiService.summarize(
+
+      let summary = await this._service.summarize(
         paperEntity,
         pageNum,
         prompt,
+        systemInstruction,
         model,
         apiKey,
         customAPIURL,
       );
+
 
       if (summary) {
         if (useMarkdown) {
@@ -296,6 +327,8 @@ class PaperlibAISummaryExtension extends PLExtension {
         }
         paperEntity.note = paperEntity.note + summary;
         await PLAPI.paperService.update([paperEntity], false, true);
+      } else {
+        PLAPI.logService.warn("Summary is empty.", "", true, "AISummaryExt");
       }
     } catch (error) {
       PLAPI.logService.error(
@@ -316,9 +349,9 @@ class PaperlibAISummaryExtension extends PLExtension {
     }
   }
 
-  async aitag() {
+  async tag() {
     PLAPI.logService.info(
-      "AITag the selected paper.",
+      "Tag the selected paper with AI.",
       "",
       false,
       "AISummaryExt",
@@ -364,43 +397,25 @@ class PaperlibAISummaryExtension extends PLExtension {
           continue;
         }
 
-        let prompt = (await PLExtAPI.extensionPreferenceService.get(
-          this.id,
-          "prompt",
-        )) as string;
         const model = (await PLExtAPI.extensionPreferenceService.get(
           this.id,
           "ai-model",
         )) as string;
-        let apiKey = "";
+
         const customAPIURL = (await PLExtAPI.extensionPreferenceService.get(
           this.id,
           "customAPIURL",
         )) as string;
-        if (GEMINIModels.hasOwnProperty(model)) {
-          apiKey = (await PLExtAPI.extensionPreferenceService.get(
-            this.id,
-            "gemini-api-key",
-          )) as string;
-        } else if (OPENAIModels.hasOwnProperty(model)) {
-          apiKey = (await PLExtAPI.extensionPreferenceService.get(
-            this.id,
-            "openai-api-key",
-          )) as string;
-        } else if (PerplexityModels.hasOwnProperty(model)) {
-          apiKey = (await PLExtAPI.extensionPreferenceService.get(
-            this.id,
-            "perplexity-api-key",
-          )) as string;
-        }
 
+        const prompt = `Please help me to choose some highly-related tags for the paper titled ${paperEntity.title} from this tag list: ${tagList}. The first page content can be used as a reference: ".`;
+        const systemInstruction = `You are an AI assistant for tagging academic publications.\n Please just give me a JSON stringified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). Please don't create new tags. If none is related, just return an empty array. Better less than more.`
 
+        const apiKey = await this.getAPIKey(model);
 
-        prompt = `Please help me to choose some related tags for the paper titled ${paperEntity.title} from this tag list: ${tagList}. Please don't create new tags. If none is related, just return an empty array. Better less than more. Please just give me a JSON stringified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). The first page content can be used as a reference: ".`;
-
-        let suggestedTagStr = await this._aiService.aitag(
+        let suggestedTagStr = await this._service.tag(
           paperEntity,
           prompt,
+          systemInstruction,
           model,
           apiKey,
           customAPIURL,
@@ -430,6 +445,13 @@ class PaperlibAISummaryExtension extends PLExtension {
               "AISummaryExt",
             );
           }
+        } else {
+          PLAPI.logService.warn(
+            "Suggested tags is empty.",
+            "",
+            true,
+            "AISummaryExt",
+          );
         }
       }
     } catch (error) {
@@ -449,6 +471,89 @@ class PaperlibAISummaryExtension extends PLExtension {
           ) - 1,
       });
     }
+  }
+
+  async filter(query: string) {
+    PLAPI.logService.info(
+      "Filter the library with AI.",
+      "",
+      false,
+      "AISummaryExt",
+    );
+
+    // Show spinner.
+    await PLAPI.uiStateService.setState({
+      "processingState.general":
+        parseInt(
+          (await PLAPI.uiStateService.getState(
+            "processingState.general",
+          )) as string,
+        ) + 1,
+    });
+
+    try {
+      const paperEntities = (await PLAPI.paperService.load("", "addTime", "desc")) as PaperEntity[];
+
+      if (paperEntities.length === 0) {
+        return;
+      }
+
+      const model = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "ai-model",
+      )) as string;
+
+      const customAPIURL = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "customAPIURL",
+      )) as string;
+
+      const prompt = `Please help me to filter the paper list according to the semantic query: ${query}. The paper list is in csv format: \n`;
+      const systemInstruction = `You are an AI assistant for filtering academic publications according to users query.\n Please just give me a JSON stringified string for the id list like {"ids": [1, 3]} without any other content, which can be directly parsed by JSON.parse().`
+
+      const apiKey = await this.getAPIKey(model);
+
+      let ids = await this._service.filter(
+        paperEntities,
+        prompt,
+        systemInstruction,
+        model,
+        apiKey,
+        customAPIURL,
+      );
+
+      if (ids.length > 0) {
+        const filteredPaperEntities = ids.map((id) =>
+          paperEntities[id]
+        ) as PaperEntity[];
+
+        const idsQuery = filteredPaperEntities.map((paperEntity) => `oid(${paperEntity.id})`).join(", ");
+        const filter = `_id IN { ${idsQuery} }`;
+
+        await PLAPI.uiStateService.setState(
+          {
+            querySentenceCommandbar: filter,
+            selectedQuerySentenceIds: [""]
+          }
+        )
+      }
+    } catch(error) {
+    PLAPI.logService.error(
+      "Failed to filter the library.",
+      error as Error,
+      false,
+      "AISummaryExt",
+    );
+  } finally {
+    await PLAPI.uiStateService.setState({
+      "processingState.general":
+        parseInt(
+          (await PLAPI.uiStateService.getState(
+            "processingState.general",
+          )) as string,
+        ) - 1,
+    });
+  }
   }
 }
 
