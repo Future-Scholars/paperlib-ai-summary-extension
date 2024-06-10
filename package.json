@@ -1,6 +1,6 @@
 {
   "name": "@future-scholars/paperlib-ai-summary-extension",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "author": "Paperlib",
   "description": "An AI-powered extension to summarize, tag, or semanticaly filter papers.",
   "main": "dist/main.js",
