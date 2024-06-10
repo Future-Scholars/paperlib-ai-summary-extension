@@ -153,18 +153,29 @@ export class AISummaryExtService {
     customAPIURL: string = "",
   ) {
     const ids = []
-    // Every 500 papers, we will send a request to the model
-    for (let i = 0; i < paperEntities.length; i += 500) {
-      const paperEntitiesSlice = paperEntities.slice(i, i + 500);
+    // Every 200 papers, we will send a request to the model
+    for (let i = 0; i < paperEntities.length; i += 200) {
+      const paperEntitiesSlice = paperEntities.slice(i, i + 200);
 
-      let csvStr = `ID,Title,Authors,Year,Publication,Tags,Folders\n`;
+      let data: any[] = []
 
       for (const j in paperEntitiesSlice) {
         const paperEntity = paperEntitiesSlice[j];
-        csvStr += `${j},${paperEntity.title},${paperEntity.authors},${paperEntity.pubTime},${paperEntity.publication},${paperEntity.tags.map((tag) => tag.name).join(",")},${paperEntity.folders.map((folder) => folder.name).join("/")}\n`;
+        const paperrow = {
+          id: j,
+          title: paperEntity.title,
+          authors: paperEntity.authors,
+          year: paperEntity.pubTime,
+          pubVenue: paperEntity.publication,
+          tags: paperEntity.tags.map((tag) => tag.name).join("/"),
+          folders: paperEntity.folders.map((folder) => folder.name).join("/")
+        }
+        data.push(paperrow);
       }
 
-      const query = prompt + csvStr;
+      const dataStr = JSON.stringify(data);
+
+      const query = prompt + dataStr;
 
       let additionalArgs: any = undefined;
 
@@ -201,7 +212,7 @@ export class AISummaryExtService {
           } else {
             return response.body;
           }
-        });
+        }, true);
 
       try {
         const filteredIds = JSON.parse(filteredCSVIds).ids as [];

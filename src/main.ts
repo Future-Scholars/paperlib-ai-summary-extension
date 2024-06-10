@@ -508,7 +508,7 @@ class PaperlibAISummaryExtension extends PLExtension {
         "customAPIURL",
       )) as string;
 
-      const prompt = `Please help me to filter the paper list according to the semantic query: ${query}. The paper list is in csv format: \n`;
+      const prompt = `Please help me to filter the paper list according to the semantic query: ${query}. The paper list is in JSON format: \n`;
       const systemInstruction = `You are an AI assistant for filtering academic publications according to users query.\n Please just give me a JSON stringified string for the id list like {"ids": [1, 3]} without any other content, which can be directly parsed by JSON.parse().`
 
       const apiKey = await this.getAPIKey(model);
