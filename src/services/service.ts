@@ -157,7 +157,7 @@ export class AISummaryExtService {
     let chunkSize = 200;
 
     if (LLMsAPI.modelServiceProvider(model) === "Gemini") {
-      chunkSize = 500
+      chunkSize = 400
     }
 
     const progressId = Math.floor(Math.random() * 1000000);
@@ -206,34 +206,44 @@ export class AISummaryExtService {
       } else if (LLMsAPI.modelServiceProvider(model) === "Zhipu") {
         prompt += "Please only output the JSON object with the ids of the papers that should be included in the filtered list without any other content."
       }
-        
-      const query = `I have a list of papers:\n` + dataStr + prompt;
-      PLAPI.logService.info(query, "", false, "AISummaryExt")
 
-      let filteredJSONIds = await LLMsAPI.model(model)
-        .setAPIKey(apiKey)
-        .setAPIURL(customAPIURL)
-        .setSystemInstruction(systemInstruction)
-        .query(query, additionalArgs, async (url: string, headers: Record<string, string>, body: any) => {
-          const response = (await PLExtAPI.networkTool.post(
-            url,
-            body,
-            headers,
-            0,
-            300000,
-            false,
-            true,
-          )) as any;
-          
-          if (
-            response.body instanceof String ||
-            typeof response.body === "string"
-          ) {
-            return JSON.parse(response.body);
-          } else {
-            return response.body;
-          }
-        }, true);
+      const query = `I have a list of papers:\n` + dataStr + prompt;
+
+      let filteredJSONIds = ""
+      try {
+        filteredJSONIds = await LLMsAPI.model(model)
+          .setAPIKey(apiKey)
+          .setAPIURL(customAPIURL)
+          .setSystemInstruction(systemInstruction)
+          .query(query, additionalArgs, async (url: string, headers: Record<string, string>, body: any) => {
+            const response = (await PLExtAPI.networkTool.post(
+              url,
+              body,
+              headers,
+              0,
+              300000,
+              false,
+              true,
+            )) as any;
+
+            if (
+              response.body instanceof String ||
+              typeof response.body === "string"
+            ) {
+              return JSON.parse(response.body);
+            } else {
+              return response.body;
+            }
+          }, true);
+      } catch (e) {
+        PLAPI.logService.error(
+          "Failed to request LLM API.",
+          e as Error,
+          true,
+          "AISummaryExt",
+        );
+        continue
+      }
 
       try {
         const filteredIds = LLMsAPI.parseJSON(filteredJSONIds).ids as [];
