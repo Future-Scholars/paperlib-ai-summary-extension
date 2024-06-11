@@ -440,9 +440,7 @@ class PaperlibAISummaryExtension extends PLExtension {
         );
         if (suggestedTagStr) {
           try {
-            const jsonStr = suggestedTagStr.match(/\{.*\}/gm)![0];
-
-            const { suggested } = JSON.parse(jsonStr);
+            const { suggested } = LLMsAPI.parseJSON(suggestedTagStr);
             const suggestedTags = tags.filter((tag) =>
               suggested.includes(tag.name),
             );
@@ -526,8 +524,10 @@ class PaperlibAISummaryExtension extends PLExtension {
         "customAPIURL",
       )) as string;
 
-      const prompt = `Please help me to filter the paper list according to the semantic query: ${query}. The paper list is in JSON format: \n`;
-      const systemInstruction = `You are an AI assistant for filtering academic publications according to users query.\n Please just give me a JSON stringified string for the id list like {"ids": [1, 3]} without any other content, which can be directly parsed by JSON.parse().`
+      const prompt = `\nAccording to the above paper list, please help me to filter the paper list according to my semantic query: '${query}'`;
+      const systemInstruction = `You are an AI assistant for filtering academic publications according to users query.\n` +
+        `Please filter the paper list according to the user's query and return the id list. \n` +
+        `Please just give user a JSON stringified string for the id list like {"ids": [1, 3]} without any other content, which can be directly parsed by JSON.parse().`
 
       const apiKey = await this.getAPIKey(model);
 
@@ -555,23 +555,23 @@ class PaperlibAISummaryExtension extends PLExtension {
           }
         )
       }
-    } catch(error) {
-    PLAPI.logService.error(
-      "Failed to filter the library.",
-      error as Error,
-      false,
-      "AISummaryExt",
-    );
-  } finally {
-    await PLAPI.uiStateService.setState({
-      "processingState.general":
-        parseInt(
-          (await PLAPI.uiStateService.getState(
-            "processingState.general",
-          )) as string,
-        ) - 1,
-    });
-  }
+    } catch (error) {
+      PLAPI.logService.error(
+        "Failed to filter the library.",
+        error as Error,
+        false,
+        "AISummaryExt",
+      );
+    } finally {
+      await PLAPI.uiStateService.setState({
+        "processingState.general":
+          parseInt(
+            (await PLAPI.uiStateService.getState(
+              "processingState.general",
+            )) as string,
+          ) - 1,
+      });
+    }
   }
 }
 

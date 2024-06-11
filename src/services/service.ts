@@ -153,29 +153,45 @@ export class AISummaryExtService {
     customAPIURL: string = "",
   ) {
     const ids = []
-    // Every 200 papers, we will send a request to the model
-    for (let i = 0; i < paperEntities.length; i += 200) {
-      const paperEntitiesSlice = paperEntities.slice(i, i + 200);
+    // Every x papers, we will send a request to the model
+    let chunkSize = 200;
 
-      let data: any[] = []
+    if (LLMsAPI.modelServiceProvider(model) === "Gemini") {
+      chunkSize = 500
+    }
+
+    const progressId = Math.floor(Math.random() * 1000000);
+    for (let i = 0; i < paperEntities.length; i += chunkSize) {
+      PLAPI.logService.progress(
+        `Filtering papers ${i + 1} to ${Math.min(i + chunkSize, paperEntities.length)}`,
+        i / paperEntities.length * 100,
+        true,
+        `AISummaryExt-${progressId}`
+      )
+      const paperEntitiesSlice = paperEntities.slice(i, i + chunkSize);
+
+      let data: any[] = [
+        "ID,Title,Authors,Publication,Year,Tags,Folders\n"
+      ]
 
       for (const j in paperEntitiesSlice) {
+        const id = i + parseInt(j);
         const paperEntity = paperEntitiesSlice[j];
-        const paperrow = {
-          id: j,
-          title: paperEntity.title,
-          authors: paperEntity.authors,
-          year: paperEntity.pubTime,
-          pubVenue: paperEntity.publication,
-          tags: paperEntity.tags.map((tag) => tag.name).join("/"),
-          folders: paperEntity.folders.map((folder) => folder.name).join("/")
-        }
+        // const paperrow = {
+        //   id: j,
+        //   title: paperEntity.title,
+        //   authors: paperEntity.authors,
+        //   year: paperEntity.pubTime,
+        //   pubVenue: paperEntity.publication,
+        //   tags: paperEntity.tags.map((tag) => tag.name).join("/"),
+        //   folders: paperEntity.folders.map((folder) => folder.name).join("/")
+        // }
+        const paperrow = `ID:${id},Title:${paperEntity.title},Authors:${paperEntity.authors},Publication:${paperEntity.publication},Year:${paperEntity.pubTime},Tags:${paperEntity.tags.map((tag) => tag.name).join("/")},Folders:${paperEntity.folders.map((folder) => folder.name).join("/")}\n`
         data.push(paperrow);
       }
 
-      const dataStr = JSON.stringify(data);
-
-      const query = prompt + dataStr;
+      // const dataStr = JSON.stringify(data);
+      const dataStr = data.join("\n");
 
       let additionalArgs: any = undefined;
 
@@ -187,9 +203,14 @@ export class AISummaryExtService {
         additionalArgs = {
           response_format: { "type": "json_object" },
         }
+      } else if (LLMsAPI.modelServiceProvider(model) === "Zhipu") {
+        prompt += "Please only output the JSON object with the ids of the papers that should be included in the filtered list without any other content."
       }
+        
+      const query = `I have a list of papers:\n` + dataStr + prompt;
+      PLAPI.logService.info(query, "", false, "AISummaryExt")
 
-      let filteredCSVIds = await LLMsAPI.model(model)
+      let filteredJSONIds = await LLMsAPI.model(model)
         .setAPIKey(apiKey)
         .setAPIURL(customAPIURL)
         .setSystemInstruction(systemInstruction)
@@ -203,7 +224,7 @@ export class AISummaryExtService {
             false,
             true,
           )) as any;
-
+          
           if (
             response.body instanceof String ||
             typeof response.body === "string"
@@ -215,17 +236,24 @@ export class AISummaryExtService {
         }, true);
 
       try {
-        const filteredIds = JSON.parse(filteredCSVIds).ids as [];
+        const filteredIds = LLMsAPI.parseJSON(filteredJSONIds).ids as [];
         ids.push(...filteredIds);
       } catch (e) {
         PLAPI.logService.error(
           "Failed to parse the response of the filter model.",
-          e as Error,
+          JSON.stringify(filteredJSONIds),
           false,
           "AISummaryExt",
         );
       }
     }
+
+    PLAPI.logService.progress(
+      `Filtering papers done.`,
+      100,
+      true,
+      `AISummaryExt-${progressId}`
+    )
 
     return ids
   }
