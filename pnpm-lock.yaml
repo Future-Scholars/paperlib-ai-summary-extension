@@ -6,8 +6,8 @@ settings:
 
 devDependencies:
   '@future-scholars/llms-api-service':
-    specifier: ^0.0.2
-    version: 0.0.2
+    specifier: ^0.0.3
+    version: 0.0.3
   '@rollup/plugin-commonjs':
     specifier: ^25.0.7
     version: 25.0.8
@@ -383,8 +383,8 @@ packages:
     dev: true
     optional: true
 
-  /@future-scholars/llms-api-service@0.0.2:
-    resolution: {integrity: sha512-zyRJSW6q2V75YpL6yI1mBc6aaQSbNYm3czjbA6bldlxjJuNT1j5lBPXsvxXVDA0XxE+DR4zj3S7XVNZE8NqQSQ==}
+  /@future-scholars/llms-api-service@0.0.3:
+    resolution: {integrity: sha512-CXlydP/v5LiQznY94vyguYV1SKANpySaO4dQ1M7v6CE6a48D/az/KQU7qF0m8CHTE3ZLZ17TCkTZi77gUomDwg==}
     engines: {node: '>=18.16.1'}
     dev: true
 

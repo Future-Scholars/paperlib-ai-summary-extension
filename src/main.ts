@@ -27,6 +27,12 @@ class PaperlibAISummaryExtension extends PLExtension {
           name: "LLM Model",
           description: "The LLM model to use.",
           options: {
+            "glm-3-turbo": "ChatGLM 3 Turbo",
+            "glm-4": "ChatGLM 4",
+            "glm-4-air": "ChatGLM 4 Air",
+            "glm-4-flash": "ChatGLM 4 Flash",
+            "glm-4v": "ChatGLM 4v",
+            "glm-4-0520": "ChatGLM 4 0520",
             "gemini-1.0-pro": "Gemini 1.0 Pro",
             "gemini-1.5-pro-latest": "Gemini 1.5 Pro",
             "gemini-1.5-flash-latest": "Gemini 1.5 Flash",
@@ -65,6 +71,13 @@ class PaperlibAISummaryExtension extends PLExtension {
           type: "string",
           name: "Perplexity API Key",
           description: "The API key for Perplexity.",
+          value: "",
+          order: 2,
+        },
+        "zhipu-api-key": {
+          type: "string",
+          name: "Zhipu ChatGLM API Key",
+          description: "The API key for ChatGLMs.",
           value: "",
           order: 2,
         },
@@ -223,6 +236,11 @@ class PaperlibAISummaryExtension extends PLExtension {
       apiKey = (await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "perplexity-api-key",
+      )) as string;
+    } else if (modelServiceProvider === "Zhipu") {
+      apiKey = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "zhipu-api-key",
       )) as string;
     }
 
