@@ -49,7 +49,7 @@ class PaperlibAISummaryExtension extends PLExtension {
             "sonar-small-chat": "Perplexity sonar-small-chat",
             "sonar-medium-chat": "Perplexity sonar-medium-chat",
           },
-          value: "gemini-pro",
+          value: "gpt-4o-mini",
           order: 1,
         },
         "gemini-api-key": {
