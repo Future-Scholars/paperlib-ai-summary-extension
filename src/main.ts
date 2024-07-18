@@ -1,10 +1,8 @@
+import { LLMsAPI } from "@future-scholars/llms-api-service";
 import { PLAPI, PLExtAPI, PLExtension, PLMainAPI } from "paperlib-api/api";
 import { PaperEntity } from "paperlib-api/model";
-import { LLMsAPI } from "@future-scholars/llms-api-service";
 
-import {
-  AISummaryExtService,
-} from "@/services/service";
+import { AISummaryExtService } from "@/services/service";
 
 class PaperlibAISummaryExtension extends PLExtension {
   disposeCallbacks: (() => void)[];
@@ -44,6 +42,7 @@ class PaperlibAISummaryExtension extends PLExtension {
             "gpt-4-1106-preview": "GPT-4 1106 Preview",
             "gpt-4-turbo": "GPT-4 Turbo",
             "gpt-4o": "GPT-4o",
+            "gpt-4o-mini": "GPT-4o Mini",
             "codellama-70b-instruct": "Perplexity codellama-70b",
             "mistral-7b-instruct": "Perplexity mistral-7b",
             "mixtral-8x7b-instruct": "Perplexity mistral-8x7b",
@@ -102,6 +101,14 @@ class PaperlibAISummaryExtension extends PLExtension {
           value: "",
           order: 5,
         },
+        customModelCode: {
+          type: "string",
+          name: "Custom Model Code",
+          description:
+            "The custom model code. If not empty, use the custom model. Otherwise, use the selected model.",
+          value: "",
+          order: 6,
+        },
       },
     });
 
@@ -138,7 +145,7 @@ class PaperlibAISummaryExtension extends PLExtension {
       PLMainAPI.contextMenuService.on(
         "dataContextMenuFromExtensionsClicked",
         (value) => {
-          const { extID, itemID } = value.value
+          const { extID, itemID } = value.value;
           if (extID === this.id && itemID === "summarize") {
             this.summarize();
           }
@@ -169,7 +176,7 @@ class PaperlibAISummaryExtension extends PLExtension {
       PLMainAPI.contextMenuService.on(
         "dataContextMenuFromExtensionsClicked",
         (value) => {
-          const { extID, itemID } = value.value
+          const { extID, itemID } = value.value;
 
           if (extID === this.id && itemID === "tagit") {
             this.tag();
@@ -192,7 +199,8 @@ class PaperlibAISummaryExtension extends PLExtension {
     this.disposeCallbacks.push(
       PLAPI.commandService.registerExternel({
         id: `semanfilter`,
-        description: "Semantically filter the library with natural language powered by LLMs.",
+        description:
+          "Semantically filter the library with natural language powered by LLMs.",
         event: "@future-scholars/filter_library",
       }),
     );
@@ -289,7 +297,7 @@ class PaperlibAISummaryExtension extends PLExtension {
       )) as string;
       prompt = prompt || "Summary this paper in 3-4 sentences:\n\n";
 
-      const model = (await PLExtAPI.extensionPreferenceService.get(
+      let model = (await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "ai-model",
       )) as string;
@@ -299,15 +307,26 @@ class PaperlibAISummaryExtension extends PLExtension {
         "customAPIURL",
       )) as string;
 
+      const customModelCode = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "customModelCode",
+      )) as string;
+
+      if (customModelCode) {
+        model = customModelCode;
+      }
+
       const apiKey = await this.getAPIKey(model);
 
       const useMarkdown = await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "markdown",
       );
-      let systemInstruction = "You are an AI assistant for summarizing academic publications.\n";
+      let systemInstruction =
+        "You are an AI assistant for summarizing academic publications.\n";
       if (useMarkdown) {
-        systemInstruction = "Don't start with a title etc. Please format the output in markdown style.\n";
+        systemInstruction =
+          "Don't start with a title etc. Please format the output in markdown style.\n";
       }
 
       let summary = await this._service.summarize(
@@ -319,7 +338,6 @@ class PaperlibAISummaryExtension extends PLExtension {
         apiKey,
         customAPIURL,
       );
-
 
       if (summary) {
         if (useMarkdown) {
@@ -415,7 +433,7 @@ class PaperlibAISummaryExtension extends PLExtension {
           continue;
         }
 
-        const model = (await PLExtAPI.extensionPreferenceService.get(
+        let model = (await PLExtAPI.extensionPreferenceService.get(
           this.id,
           "ai-model",
         )) as string;
@@ -425,8 +443,17 @@ class PaperlibAISummaryExtension extends PLExtension {
           "customAPIURL",
         )) as string;
 
+        const customModelCode = (await PLExtAPI.extensionPreferenceService.get(
+          this.id,
+          "customModelCode",
+        )) as string;
+
+        if (customModelCode) {
+          model = customModelCode;
+        }
+
         const prompt = `Please help me to choose some highly-related tags for the paper titled ${paperEntity.title} from this tag list: ${tagList}. The first page content can be used as a reference: ".`;
-        const systemInstruction = `You are an AI assistant for tagging academic publications.\n Please just give me a JSON stringified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). Please don't create new tags. If none is related, just return an empty array. Better less than more.`
+        const systemInstruction = `You are an AI assistant for tagging academic publications.\n Please just give me a JSON stringified string like {"suggested": ["tag1"]} without any other content, which can be directly parsed by JSON.parse(). Please don't create new tags. If none is related, just return an empty array. Better less than more.`;
 
         const apiKey = await this.getAPIKey(model);
 
@@ -508,13 +535,17 @@ class PaperlibAISummaryExtension extends PLExtension {
     });
 
     try {
-      const paperEntities = (await PLAPI.paperService.load("", "addTime", "desc")) as PaperEntity[];
+      const paperEntities = (await PLAPI.paperService.load(
+        "",
+        "addTime",
+        "desc",
+      )) as PaperEntity[];
 
       if (paperEntities.length === 0) {
         return;
       }
 
-      const model = (await PLExtAPI.extensionPreferenceService.get(
+      let model = (await PLExtAPI.extensionPreferenceService.get(
         this.id,
         "ai-model",
       )) as string;
@@ -524,10 +555,20 @@ class PaperlibAISummaryExtension extends PLExtension {
         "customAPIURL",
       )) as string;
 
+      const customModelCode = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "customModelCode",
+      )) as string;
+
+      if (customModelCode) {
+        model = customModelCode;
+      }
+
       const prompt = `\nAccording to the above paper list, please help me to filter the paper list according to my semantic query: '${query}'`;
-      const systemInstruction = `You are an AI assistant for filtering academic publications according to users query.\n` +
+      const systemInstruction =
+        `You are an AI assistant for filtering academic publications according to users query.\n` +
         `Please filter the paper list according to the user's query and return the id list. \n` +
-        `Please just give user a JSON stringified string for the id list like {"ids": [1, 3]} without any other content, which can be directly parsed by JSON.parse().`
+        `Please just give user a JSON stringified string for the id list like {"ids": [1, 3]} without any other content, which can be directly parsed by JSON.parse().`;
 
       const apiKey = await this.getAPIKey(model);
 
@@ -541,19 +582,19 @@ class PaperlibAISummaryExtension extends PLExtension {
       );
 
       if (ids.length > 0) {
-        const filteredPaperEntities = ids.map((id) =>
-          paperEntities[id]
+        const filteredPaperEntities = ids.map(
+          (id) => paperEntities[id],
         ) as PaperEntity[];
 
-        const idsQuery = filteredPaperEntities.map((paperEntity) => `oid(${paperEntity.id})`).join(", ");
+        const idsQuery = filteredPaperEntities
+          .map((paperEntity) => `oid(${paperEntity.id})`)
+          .join(", ");
         const filter = `_id IN { ${idsQuery} }`;
 
-        await PLAPI.uiStateService.setState(
-          {
-            querySentenceCommandbar: filter,
-            selectedQuerySentenceIds: [""]
-          }
-        )
+        await PLAPI.uiStateService.setState({
+          querySentenceCommandbar: filter,
+          selectedQuerySentenceIds: [""],
+        });
       }
     } catch (error) {
       PLAPI.logService.error(
