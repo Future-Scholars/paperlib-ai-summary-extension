@@ -25,6 +25,7 @@ class PaperlibAISummaryExtension extends PLExtension {
           name: "LLM Model",
           description: "The LLM model to use.",
           options: {
+            "deepseek-chat": "DeepSeek v3",
             "glm-3-turbo": "ChatGLM 3 Turbo",
             "glm-4": "ChatGLM 4",
             "glm-4-air": "ChatGLM 4 Air",
@@ -34,6 +35,7 @@ class PaperlibAISummaryExtension extends PLExtension {
             "gemini-1.0-pro": "Gemini 1.0 Pro",
             "gemini-1.5-pro-latest": "Gemini 1.5 Pro",
             "gemini-1.5-flash-latest": "Gemini 1.5 Flash",
+            "gemini-2.0-flash-exp": "Gemini 2.0 Flash",
             "gpt-3.5-turbo": "GPT-3.5 Turbo",
             "gpt-3.5-turbo-16k": "GPT-3.5 Turbo 16K",
             "gpt-3.5-turbo-1106": "GPT-3.5 Turbo 1106",
@@ -80,6 +82,13 @@ class PaperlibAISummaryExtension extends PLExtension {
           value: "",
           order: 2,
         },
+        "deepseek-api-key": {
+          type: "string",
+          name: "Deepseek API Key",
+          description: "The API key for Deepseek.",
+          value: "",
+          order: 2,
+        },
         prompt: {
           type: "string",
           name: "Prompt",
@@ -98,6 +107,13 @@ class PaperlibAISummaryExtension extends PLExtension {
           type: "string",
           name: "Custom API URL",
           description: "The proxied API URL.",
+          value: "",
+          order: 5,
+        },
+        customAPIKey: {
+          type: "string",
+          name: "Custom API Key",
+          description: "This should be used if the custom model code is not empty.",
           value: "",
           order: 5,
         },
@@ -228,6 +244,15 @@ class PaperlibAISummaryExtension extends PLExtension {
   }
 
   async getAPIKey(model: string) {
+    const customAPIKey = (await PLExtAPI.extensionPreferenceService.get(
+      this.id,
+      "customAPIKey",
+    )) as string;
+
+    if (customAPIKey) {
+      return customAPIKey;
+    }
+
     let apiKey = "";
     const modelServiceProvider = LLMsAPI.modelServiceProvider(model);
     if (modelServiceProvider === "Gemini") {
