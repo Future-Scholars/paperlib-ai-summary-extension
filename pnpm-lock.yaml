@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@future-scholars/llms-api-service':
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.0.8
+        version: 0.0.8
       '@rollup/plugin-commonjs':
         specifier: ^25.0.7
         version: 25.0.8(rollup@3.29.4)
@@ -244,8 +244,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@future-scholars/llms-api-service@0.0.5':
-    resolution: {integrity: sha512-o09pKrrf0jMgIKM/7IM2ZafP3NtDq/ktvLWBfPB3IWDRwfCrHQXLauF1Zhz4f00wbra5nLorJ/+ywDg988WRtA==}
+  '@future-scholars/llms-api-service@0.0.8':
+    resolution: {integrity: sha512-jDwcPlZPyRPNKCGxwxtXaWu3GJX90z8i+avVj+bF+gLw5MwzRaEMS0BEtAEjV6gdrGUUROAjChoFCFSBlqJwHw==}
     engines: {node: '>=18.16.1'}
 
   '@jridgewell/sourcemap-codec@1.4.15':
@@ -1619,7 +1619,7 @@ snapshots:
   '@esbuild/win32-x64@0.18.20':
     optional: true
 
-  '@future-scholars/llms-api-service@0.0.5': {}
+  '@future-scholars/llms-api-service@0.0.8': {}
 
   '@jridgewell/sourcemap-codec@1.4.15': {}
 
