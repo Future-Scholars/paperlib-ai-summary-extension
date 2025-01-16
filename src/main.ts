@@ -275,6 +275,16 @@ class PaperlibAISummaryExtension extends PLExtension {
         this.id,
         "zhipu-api-key",
       )) as string;
+    } else if (modelServiceProvider === "Deepseek") {
+      apiKey = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "deepseek-api-key",
+      )) as string;
+    } else {
+      apiKey = (await PLExtAPI.extensionPreferenceService.get(
+        this.id,
+        "openai-api-key",
+      )) as string;
     }
 
     return apiKey;
